@@ -1,3 +1,30 @@
+CREATE OR REPLACE FUNCTION init_worker()
+RETURNS VOID
+AS $$
+BEGIN
+    -- Create the worker table if it doesn't exist
+    CREATE TABLE IF NOT EXISTS worker (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        rid UUID UNIQUE DEFAULT gen_random_uuid(),
+        name VARCHAR(100) DEFAULT '',
+        options JSONB DEFAULT '{}',
+        available_tasks VARCHAR[] DEFAULT ARRAY[]::VARCHAR[],
+        available_next_interval VARCHAR[] DEFAULT ARRAY[]::VARCHAR[],
+        current_concurrency INT DEFAULT 0,
+        max_concurrency INT DEFAULT 1,
+        status VARCHAR(50) DEFAULT 'READY',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Create indexes for efficient querying
+    CREATE INDEX IF NOT EXISTS idx_worker_rid ON worker (rid);
+    CREATE INDEX IF NOT EXISTS idx_worker_name ON worker (name);
+    CREATE INDEX IF NOT EXISTS idx_worker_status ON worker (status);
+END;
+$$ LANGUAGE plpgsql;
+
+
 CREATE OR REPLACE FUNCTION insert_worker(
     input_name VARCHAR(100),
     input_options JSONB,

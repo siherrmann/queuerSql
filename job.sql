@@ -1,3 +1,61 @@
+CREATE OR REPLACE FUNCTION init_job() RETURNS VOID AS $$
+BEGIN
+    -- Create pgcrypto extension
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    
+    -- Create job table
+    CREATE TABLE IF NOT EXISTS job (
+        id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        rid UUID UNIQUE DEFAULT gen_random_uuid(),
+        worker_id BIGINT DEFAULT 0,
+        worker_rid UUID DEFAULT NULL,
+        options JSONB DEFAULT '{}',
+        task_name VARCHAR(100) DEFAULT '',
+        parameters JSONB DEFAULT '[]',
+        status VARCHAR(50) DEFAULT 'QUEUED',
+        scheduled_at TIMESTAMP DEFAULT NULL,
+        started_at TIMESTAMP DEFAULT NULL,
+        schedule_count INT DEFAULT 0,
+        attempts INT DEFAULT 0,
+        results JSONB DEFAULT '[]',
+        results_encrypted BYTEA DEFAULT '',
+        error TEXT DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Create job_archive table with TimescaleDB hypertable
+    CREATE TABLE IF NOT EXISTS job_archive (
+        LIKE job INCLUDING DEFAULTS INCLUDING CONSTRAINTS,
+        PRIMARY KEY (id, updated_at)
+    );
+    
+    -- Create hypertable (TimescaleDB feature)
+    PERFORM create_hypertable('job_archive', by_range('updated_at'), if_not_exists => TRUE);
+    
+    -- Create triggers for notifications
+    CREATE OR REPLACE TRIGGER job_notify_event
+        BEFORE INSERT OR UPDATE ON job
+        FOR EACH ROW EXECUTE PROCEDURE notify_event();
+    
+    CREATE OR REPLACE TRIGGER job_archive_notify_event
+        BEFORE INSERT ON job_archive
+        FOR EACH ROW EXECUTE PROCEDURE notify_event();
+    
+    -- Create indexes
+    CREATE INDEX IF NOT EXISTS idx_next_interval
+        ON job
+        USING HASH ((options->'schedule'->>'next_interval'));
+    
+    CREATE INDEX IF NOT EXISTS idx_job_worker_id ON job (worker_id);
+    CREATE INDEX IF NOT EXISTS idx_job_worker_rid ON job (worker_rid);
+    CREATE INDEX IF NOT EXISTS idx_job_status ON job (status);
+    CREATE INDEX IF NOT EXISTS idx_job_created_at ON job (created_at);
+    CREATE INDEX IF NOT EXISTS idx_job_updated_at ON job (updated_at);
+END;
+$$ LANGUAGE plpgsql;
+
+
 CREATE OR REPLACE FUNCTION update_job_initial(input_worker_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
