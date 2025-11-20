@@ -345,3 +345,29 @@ BEGIN
         updated_at;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_stale_jobs(
+    input_new_status VARCHAR(50),
+    input_excluded_status1 VARCHAR(50),
+    input_excluded_status2 VARCHAR(50),
+    input_excluded_status3 VARCHAR(50),
+    input_worker_status VARCHAR(50)
+)
+RETURNS INT
+AS $$
+DECLARE
+    affected_rows INT;
+BEGIN
+    UPDATE job 
+    SET status = input_new_status 
+    WHERE status NOT IN (input_excluded_status1, input_excluded_status2, input_excluded_status3)
+      AND worker_rid IN (
+          SELECT rid 
+          FROM worker 
+          WHERE status = input_worker_status
+      );
+    
+    GET DIAGNOSTICS affected_rows = ROW_COUNT;
+    RETURN affected_rows;
+END;
+$$ LANGUAGE plpgsql;

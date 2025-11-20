@@ -106,6 +106,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION update_stale_workers(
+    input_new_status VARCHAR(50),
+    input_status1 VARCHAR(50),
+    input_status2 VARCHAR(50),
+    input_cutoff_time TIMESTAMP
+)
+RETURNS INT
+AS $$
+DECLARE
+    affected_rows INT;
+BEGIN
+    UPDATE worker
+    SET status = input_new_status
+    WHERE (status = input_status1 OR status = input_status2)
+      AND updated_at < input_cutoff_time;
+    
+    GET DIAGNOSTICS affected_rows = ROW_COUNT;
+    RETURN affected_rows;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION delete_worker(
     input_rid UUID
 )
