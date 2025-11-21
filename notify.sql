@@ -11,10 +11,19 @@ BEGIN
     END IF;
 
     IF (TG_OP = 'DELETE') THEN
-        data = row_to_json(OLD);
+        data = json_build_object(
+            'id', OLD.id,
+            'rid', OLD.rid,
+            'status', OLD.status
+        );
     ELSE
-        data = row_to_json(NEW);
+        data = json_build_object(
+            'id', NEW.id,
+            'rid', NEW.rid,
+            'status', NEW.status
+        );
     END IF;
+    
     PERFORM pg_notify(channel, data::text);
     RETURN NEW;
 END;
