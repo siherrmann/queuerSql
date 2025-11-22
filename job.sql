@@ -64,19 +64,19 @@ CREATE OR REPLACE FUNCTION insert_job(
     input_schedule_count INT
 )
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 )
 AS $$
 BEGIN
@@ -102,20 +102,20 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION update_job_initial(input_worker_id BIGINT)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -425,22 +425,22 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_job(input_encryption_key TEXT, input_rid UUID)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    results JSONB,
-    error TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_results JSONB,
+    output_error TEXT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -471,22 +471,22 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_all_jobs(input_encryption_key TEXT, input_last_id INT, input_entries INT)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    results JSONB,
-    error TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_results JSONB,
+    output_error TEXT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -528,22 +528,22 @@ CREATE OR REPLACE FUNCTION select_all_jobs_by_worker_rid(
     input_entries INT
 )
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    results JSONB,
-    error TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_results JSONB,
+    output_error TEXT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -586,22 +586,22 @@ CREATE OR REPLACE FUNCTION select_all_jobs_by_search(
     input_entries INT
 )
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    results JSONB,
-    error TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_results JSONB,
+    output_error TEXT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -656,22 +656,22 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_job_from_archive(input_encryption_key TEXT, input_rid UUID)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    results JSONB,
-    error TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_results JSONB,
+    output_error TEXT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -702,22 +702,22 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_all_jobs_from_archive(input_encryption_key TEXT, input_last_id INT, input_entries INT)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    results JSONB,
-    error TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_results JSONB,
+    output_error TEXT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -759,22 +759,22 @@ CREATE OR REPLACE FUNCTION select_all_jobs_from_archive_by_search(
     input_entries INT
 )
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    worker_id BIGINT,
-    worker_rid UUID,
-    options JSONB,
-    task_name VARCHAR(100),
-    parameters JSONB,
-    status VARCHAR(50),
-    scheduled_at TIMESTAMP,
-    started_at TIMESTAMP,
-    schedule_count INT,
-    attempts INT,
-    results JSONB,
-    error TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_worker_id BIGINT,
+    output_worker_rid UUID,
+    output_options JSONB,
+    output_task_name VARCHAR(100),
+    output_parameters JSONB,
+    output_status VARCHAR(50),
+    output_scheduled_at TIMESTAMP,
+    output_started_at TIMESTAMP,
+    output_schedule_count INT,
+    output_attempts INT,
+    output_results JSONB,
+    output_error TEXT,
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 ) AS $$
 BEGIN
     RETURN QUERY
