@@ -140,16 +140,16 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_worker(input_rid UUID)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    name VARCHAR(100),
-    options JSONB,
-    available_tasks VARCHAR[],
-    available_next_interval VARCHAR[],
-    max_concurrency INT,
-    status VARCHAR(50),
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_name VARCHAR(100),
+    output_options JSONB,
+    output_available_tasks VARCHAR[],
+    output_available_next_interval VARCHAR[],
+    output_max_concurrency INT,
+    output_status VARCHAR(50),
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 )
 AS $$
 BEGIN
@@ -174,16 +174,16 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_all_workers(input_last_id INT, input_entries INT)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    name VARCHAR(100),
-    options JSONB,
-    available_tasks VARCHAR[],
-    available_next_interval VARCHAR[],
-    max_concurrency INT,
-    status VARCHAR(50),
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_name VARCHAR(100),
+    output_options JSONB,
+    output_available_tasks VARCHAR[],
+    output_available_next_interval VARCHAR[],
+    output_max_concurrency INT,
+    output_status VARCHAR(50),
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 )
 AS $$
 BEGIN
@@ -217,16 +217,16 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_all_workers_by_search(input_search TEXT, input_last_id INT, input_entries INT)
 RETURNS TABLE (
-    id BIGINT,
-    rid UUID,
-    name VARCHAR(100),
-    options JSONB,
-    available_tasks VARCHAR[],
-    available_next_interval VARCHAR[],
-    max_concurrency INT,
-    status VARCHAR(50),
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    output_id BIGINT,
+    output_rid UUID,
+    output_name VARCHAR(100),
+    output_options JSONB,
+    output_available_tasks VARCHAR[],
+    output_available_next_interval VARCHAR[],
+    output_max_concurrency INT,
+    output_status VARCHAR(50),
+    output_created_at TIMESTAMP,
+    output_updated_at TIMESTAMP
 )
 AS $$
 BEGIN
@@ -262,12 +262,12 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION select_all_connections()
 RETURNS TABLE (
-    pid INT,
-    datname NAME,
-    usename NAME,
-    application_name TEXT,
-    query TEXT,
-    state TEXT
+    output_pid INT,
+    output_datname NAME,
+    output_usename NAME,
+    output_application_name TEXT,
+    output_query TEXT,
+    output_state TEXT
 )
 AS $$
 BEGIN
