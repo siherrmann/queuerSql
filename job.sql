@@ -55,6 +55,50 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION insert_job(
+    input_options JSONB,
+    input_task_name VARCHAR(100),
+    input_parameters JSONB,
+    input_status VARCHAR(50),
+    input_scheduled_at TIMESTAMP,
+    input_schedule_count INT
+)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    INSERT INTO job (options, task_name, parameters, status, scheduled_at, schedule_count)
+    VALUES (input_options, input_task_name, input_parameters, input_status, input_scheduled_at, input_schedule_count)
+    RETURNING
+        job.id,
+        job.rid,
+        job.worker_id,
+        job.worker_rid,
+        job.options,
+        job.task_name,
+        job.parameters,
+        job.status,
+        job.scheduled_at,
+        job.schedule_count,
+        job.attempts,
+        job.created_at,
+        job.updated_at;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION update_job_initial(input_worker_id BIGINT)
 RETURNS TABLE (
@@ -369,5 +413,402 @@ BEGIN
     
     GET DIAGNOSTICS affected_rows = ROW_COUNT;
     RETURN affected_rows;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_job(input_rid UUID)
+RETURNS VOID AS $$
+BEGIN
+    DELETE FROM job WHERE rid = input_rid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_job(input_encryption_key TEXT, input_rid UUID)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    started_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    results JSONB,
+    error TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        job.id,
+        job.rid,
+        job.worker_id,
+        job.worker_rid,
+        job.options,
+        job.task_name,
+        job.parameters,
+        job.status,
+        job.scheduled_at,
+        job.started_at,
+        job.schedule_count,
+        job.attempts,
+        CASE
+            WHEN octet_length(job.results_encrypted) > 0 THEN pgp_sym_decrypt(job.results_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.results
+        END AS results,
+        job.error,
+        job.created_at,
+        job.updated_at
+    FROM job
+    WHERE job.rid = input_rid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_jobs(input_encryption_key TEXT, input_last_id INT, input_entries INT)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    started_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    results JSONB,
+    error TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        job.id,
+        job.rid,
+        job.worker_id,
+        job.worker_rid,
+        job.options,
+        job.task_name,
+        job.parameters,
+        job.status,
+        job.scheduled_at,
+        job.started_at,
+        job.schedule_count,
+        job.attempts,
+        CASE
+            WHEN octet_length(job.results_encrypted) > 0 THEN pgp_sym_decrypt(job.results_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.results
+        END AS results,
+        job.error,
+        job.created_at,
+        job.updated_at
+    FROM job
+    WHERE (0 = input_last_id
+        OR job.created_at < (
+            SELECT d.created_at
+            FROM job AS d
+            WHERE d.id = input_last_id))
+    ORDER BY job.created_at DESC
+    LIMIT input_entries;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_jobs_by_worker_rid(
+    input_encryption_key TEXT,
+    input_worker_rid UUID,
+    input_last_id INT,
+    input_entries INT
+)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    started_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    results JSONB,
+    error TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        job.id,
+        job.rid,
+        job.worker_id,
+        job.worker_rid,
+        job.options,
+        job.task_name,
+        job.parameters,
+        job.status,
+        job.scheduled_at,
+        job.started_at,
+        job.schedule_count,
+        job.attempts,
+        CASE
+            WHEN octet_length(job.results_encrypted) > 0 THEN pgp_sym_decrypt(job.results_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.results
+        END AS results,
+        job.error,
+        job.created_at,
+        job.updated_at
+    FROM job
+    WHERE job.worker_rid = input_worker_rid
+        AND (0 = input_last_id
+            OR job.created_at < (
+                SELECT d.created_at
+                FROM job AS d
+                WHERE d.id = input_last_id))
+    ORDER BY job.created_at DESC
+    LIMIT input_entries;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_jobs_by_search(
+    input_encryption_key TEXT,
+    input_search TEXT,
+    input_last_id INT,
+    input_entries INT
+)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    started_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    results JSONB,
+    error TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        job.id,
+        job.rid,
+        job.worker_id,
+        job.worker_rid,
+        job.options,
+        job.task_name,
+        job.parameters,
+        job.status,
+        job.scheduled_at,
+        job.started_at,
+        job.schedule_count,
+        job.attempts,
+        CASE
+            WHEN octet_length(job.results_encrypted) > 0 THEN pgp_sym_decrypt(job.results_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.results
+        END AS results,
+        job.error,
+        job.created_at,
+        job.updated_at
+    FROM job
+    WHERE (job.rid::text ILIKE '%' || input_search || '%'
+            OR job.worker_id::text ILIKE '%' || input_search || '%'
+            OR job.task_name ILIKE '%' || input_search || '%'
+            OR job.status ILIKE '%' || input_search || '%')
+        AND (0 = input_last_id
+            OR job.created_at < (
+                SELECT u.created_at
+                FROM job AS u
+                WHERE u.id = input_last_id))
+    ORDER BY job.created_at DESC
+    LIMIT input_entries;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION add_retention_archive(input_retention_days INT)
+RETURNS VOID AS $$
+BEGIN
+    PERFORM add_retention_policy('job_archive', (input_retention_days * INTERVAL '1 day'));
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION remove_retention_archive()
+RETURNS VOID AS $$
+BEGIN
+    PERFORM remove_retention_policy('job_archive');
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_job_from_archive(input_encryption_key TEXT, input_rid UUID)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    started_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    results JSONB,
+    error TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        job_archive.id,
+        job_archive.rid,
+        job_archive.worker_id,
+        job_archive.worker_rid,
+        job_archive.options,
+        job_archive.task_name,
+        job_archive.parameters,
+        job_archive.status,
+        job_archive.scheduled_at,
+        job_archive.started_at,
+        job_archive.schedule_count,
+        job_archive.attempts,
+        CASE
+            WHEN octet_length(job_archive.results_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.results_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.results
+        END AS results,
+        job_archive.error,
+        job_archive.created_at,
+        job_archive.updated_at
+    FROM job_archive
+    WHERE job_archive.rid = input_rid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_jobs_from_archive(input_encryption_key TEXT, input_last_id INT, input_entries INT)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    started_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    results JSONB,
+    error TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        job_archive.id,
+        job_archive.rid,
+        job_archive.worker_id,
+        job_archive.worker_rid,
+        job_archive.options,
+        job_archive.task_name,
+        job_archive.parameters,
+        job_archive.status,
+        job_archive.scheduled_at,
+        job_archive.started_at,
+        job_archive.schedule_count,
+        job_archive.attempts,
+        CASE
+            WHEN octet_length(job_archive.results_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.results_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.results
+        END AS results,
+        job_archive.error,
+        job_archive.created_at,
+        job_archive.updated_at
+    FROM job_archive
+    WHERE (0 = input_last_id
+        OR job_archive.created_at < (
+            SELECT d.created_at
+            FROM job_archive AS d
+            WHERE d.id = input_last_id))
+    ORDER BY job_archive.created_at DESC
+    LIMIT input_entries;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_jobs_from_archive_by_search(
+    input_encryption_key TEXT,
+    input_search TEXT,
+    input_last_id INT,
+    input_entries INT
+)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    worker_id BIGINT,
+    worker_rid UUID,
+    options JSONB,
+    task_name VARCHAR(100),
+    parameters JSONB,
+    status VARCHAR(50),
+    scheduled_at TIMESTAMP,
+    started_at TIMESTAMP,
+    schedule_count INT,
+    attempts INT,
+    results JSONB,
+    error TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        job_archive.id,
+        job_archive.rid,
+        job_archive.worker_id,
+        job_archive.worker_rid,
+        job_archive.options,
+        job_archive.task_name,
+        job_archive.parameters,
+        job_archive.status,
+        job_archive.scheduled_at,
+        job_archive.started_at,
+        job_archive.schedule_count,
+        job_archive.attempts,
+        CASE
+            WHEN octet_length(job_archive.results_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.results_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.results
+        END AS results,
+        job_archive.error,
+        job_archive.created_at,
+        job_archive.updated_at
+    FROM job_archive
+    WHERE (job_archive.rid::text ILIKE '%' || input_search || '%'
+            OR job_archive.worker_id::text ILIKE '%' || input_search || '%'
+            OR job_archive.task_name ILIKE '%' || input_search || '%'
+            OR job_archive.status ILIKE '%' || input_search || '%')
+        AND (0 = input_last_id
+            OR job_archive.created_at < (
+                SELECT u.created_at
+                FROM job_archive AS u
+                WHERE u.id = input_last_id))
+    ORDER BY job_archive.created_at DESC
+    LIMIT input_entries;
 END;
 $$ LANGUAGE plpgsql;

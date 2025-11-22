@@ -137,3 +137,149 @@ BEGIN
     WHERE rid = input_rid;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_worker(input_rid UUID)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    name VARCHAR(100),
+    options JSONB,
+    available_tasks VARCHAR[],
+    available_next_interval VARCHAR[],
+    max_concurrency INT,
+    status VARCHAR(50),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        w.id,
+        w.rid,
+        w.name,
+        w.options,
+        w.available_tasks,
+        w.available_next_interval,
+        w.max_concurrency,
+        w.status,
+        w.created_at,
+        w.updated_at
+    FROM
+        worker w
+    WHERE
+        w.rid = input_rid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_workers(input_last_id INT, input_entries INT)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    name VARCHAR(100),
+    options JSONB,
+    available_tasks VARCHAR[],
+    available_next_interval VARCHAR[],
+    max_concurrency INT,
+    status VARCHAR(50),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        w.id,
+        w.rid,
+        w.name,
+        w.options,
+        w.available_tasks,
+        w.available_next_interval,
+        w.max_concurrency,
+        w.status,
+        w.created_at,
+        w.updated_at
+    FROM
+        worker w
+    WHERE (0 = input_last_id
+        OR w.created_at < (
+            SELECT
+                d.created_at
+            FROM
+                worker AS d
+            WHERE
+                d.id = input_last_id))
+    ORDER BY
+        w.created_at DESC
+    LIMIT input_entries;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_workers_by_search(input_search TEXT, input_last_id INT, input_entries INT)
+RETURNS TABLE (
+    id BIGINT,
+    rid UUID,
+    name VARCHAR(100),
+    options JSONB,
+    available_tasks VARCHAR[],
+    available_next_interval VARCHAR[],
+    max_concurrency INT,
+    status VARCHAR(50),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        w.id,
+        w.rid,
+        w.name,
+        w.options,
+        w.available_tasks,
+        w.available_next_interval,
+        w.max_concurrency,
+        w.status,
+        w.created_at,
+        w.updated_at
+    FROM worker w
+    WHERE (w.name ILIKE '%' || input_search || '%'
+            OR array_to_string(w.available_tasks, ',') ILIKE '%' || input_search || '%'
+            OR w.status ILIKE '%' || input_search || '%')
+        AND (0 = input_last_id
+            OR w.created_at < (
+                SELECT
+                    u.created_at
+                FROM
+                    worker AS u
+                WHERE
+                    u.id = input_last_id))
+    ORDER BY
+        w.created_at DESC
+    LIMIT input_entries;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION select_all_connections()
+RETURNS TABLE (
+    pid INT,
+    datname NAME,
+    usename NAME,
+    application_name TEXT,
+    query TEXT,
+    state TEXT
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        psa.pid,
+        psa.datname,
+        psa.usename,
+        psa.application_name,
+        psa.query,
+        psa.state
+    FROM pg_stat_activity psa
+    WHERE psa.application_name='queuer';
+END;
+$$ LANGUAGE plpgsql;

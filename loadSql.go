@@ -16,9 +16,44 @@ var workerSQL string
 //go:embed notify.sql
 var notifySQL string
 
-var JobFunctions = []string{"update_job_initial", "update_job_final", "update_job_final_encrypted"}
-var WorkerFunctions = []string{"insert_worker", "update_worker", "delete_worker"}
-var NotifyFunctions = []string{"notify_event"}
+//go:embed master.sql
+var masterSQL string
+
+var JobFunctions = []string{
+	"init_job",
+	"insert_job",
+	"update_job_initial",
+	"update_job_final",
+	"update_job_final_encrypted",
+	"update_stale_jobs",
+	"delete_job",
+	"select_job",
+	"select_all_jobs",
+	"select_all_jobs_by_worker_rid",
+	"select_all_jobs_by_search",
+	"add_retention_archive",
+	"remove_retention_archive",
+	"select_job_from_archive",
+	"select_all_jobs_from_archive",
+	"select_all_jobs_from_archive_by_search",
+}
+var WorkerFunctions = []string{
+	"insert_worker",
+	"update_worker",
+	"delete_worker",
+	"select_worker",
+	"select_all_workers",
+	"select_all_workers_by_search",
+	"select_all_connections",
+}
+var MasterFunctions = []string{
+	"init_master",
+	"update_master",
+	"select_master",
+}
+var NotifyFunctions = []string{
+	"notify_event",
+}
 
 func LoadJobSql(db *sql.DB, force bool) error {
 	if !force {
@@ -103,6 +138,35 @@ func LoadNotifySql(db *sql.DB, force bool) error {
 	}
 
 	log.Println("SQL notify functions loaded successfully")
+
+	return nil
+}
+
+func LoadMasterSql(db *sql.DB, force bool) error {
+	if !force {
+		exist, err := checkFunctions(db, MasterFunctions)
+		if err != nil {
+			return fmt.Errorf("error checking existing master functions: %w", err)
+		}
+		if exist {
+			return nil
+		}
+	}
+
+	_, err := db.Exec(masterSQL)
+	if err != nil {
+		return fmt.Errorf("error executing master SQL: %w", err)
+	}
+
+	exist, err := checkFunctions(db, MasterFunctions)
+	if err != nil {
+		return fmt.Errorf("error checking existing functions: %w", err)
+	}
+	if !exist {
+		return fmt.Errorf("not all required SQL functions were created")
+	}
+
+	fmt.Println("SQL master functions loaded successfully")
 
 	return nil
 }
