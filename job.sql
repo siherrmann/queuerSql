@@ -1,5 +1,8 @@
 CREATE OR REPLACE FUNCTION init_job() RETURNS VOID AS $$
 BEGIN
+    -- Create TimescaleDB extension
+    CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE
+    
     -- Create pgcrypto extension
     CREATE EXTENSION IF NOT EXISTS pgcrypto;
     
