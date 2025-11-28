@@ -38,6 +38,7 @@ var JobFunctions = []string{
 	"select_all_jobs_from_archive_by_search",
 }
 var WorkerFunctions = []string{
+	"init_worker",
 	"insert_worker",
 	"update_worker",
 	"delete_worker",
