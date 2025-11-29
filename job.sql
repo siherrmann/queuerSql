@@ -419,13 +419,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION delete_job(input_rid UUID)
-RETURNS VOID AS $$
-BEGIN
-    DELETE FROM job WHERE rid = input_rid;
-END;
-$$ LANGUAGE plpgsql;
-
 CREATE OR REPLACE FUNCTION select_job(input_encryption_key TEXT, input_rid UUID)
 RETURNS TABLE (
     output_id BIGINT,
@@ -654,6 +647,13 @@ CREATE OR REPLACE FUNCTION remove_retention_archive()
 RETURNS VOID AS $$
 BEGIN
     PERFORM remove_retention_policy('job_archive');
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION delete_job(input_rid UUID)
+RETURNS VOID AS $$
+BEGIN
+    DELETE FROM job_archive WHERE rid = input_rid;
 END;
 $$ LANGUAGE plpgsql;
 
