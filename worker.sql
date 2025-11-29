@@ -138,6 +138,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION delete_stale_workers(
+    input_cutoff_time TIMESTAMP
+)
+RETURNS INT
+AS $$
+DECLARE
+    affected_rows INT;
+BEGIN
+    DELETE FROM worker
+    WHERE updated_at < input_cutoff_time
+      AND status = 'STOPPED';
+    
+    GET DIAGNOSTICS affected_rows = ROW_COUNT;
+    RETURN affected_rows;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION select_worker(input_rid UUID)
 RETURNS TABLE (
     output_id BIGINT,
