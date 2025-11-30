@@ -1,4 +1,4 @@
-module queuerSql
+module github.com/siherrmann/queuerSql
 
 go 1.25.2
 
