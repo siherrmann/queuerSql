@@ -1,4 +1,4 @@
-module sql
+module queuerSql
 
 go 1.25.2
 
