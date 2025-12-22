@@ -15,6 +15,9 @@ BEGIN
         options JSONB DEFAULT '{}',
         task_name VARCHAR(100) DEFAULT '',
         parameters JSONB DEFAULT '[]',
+        parameters_encrypted BYTEA DEFAULT '',
+        parameters_keyed JSONB DEFAULT '{}',
+        parameters_keyed_encrypted BYTEA DEFAULT '',
         status VARCHAR(50) DEFAULT 'QUEUED',
         scheduled_at TIMESTAMP DEFAULT NULL,
         started_at TIMESTAMP DEFAULT NULL,
@@ -62,6 +65,7 @@ CREATE OR REPLACE FUNCTION insert_job(
     input_options JSONB,
     input_task_name VARCHAR(100),
     input_parameters JSONB,
+    input_parameters_keyed JSONB,
     input_status VARCHAR(50),
     input_scheduled_at TIMESTAMP,
     input_schedule_count INT
@@ -74,6 +78,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_schedule_count INT,
@@ -84,8 +89,8 @@ RETURNS TABLE (
 AS $$
 BEGIN
     RETURN QUERY
-    INSERT INTO job (options, task_name, parameters, status, scheduled_at, schedule_count)
-    VALUES (input_options, input_task_name, input_parameters, input_status, input_scheduled_at, input_schedule_count)
+    INSERT INTO job (options, task_name, parameters, parameters_keyed, status, scheduled_at, schedule_count)
+    VALUES (input_options, input_task_name, input_parameters, input_parameters_keyed, input_status, input_scheduled_at, input_schedule_count)
     RETURNING
         job.id,
         job.rid,
@@ -94,6 +99,7 @@ BEGIN
         job.options,
         job.task_name,
         job.parameters,
+        job.parameters_keyed,
         job.status,
         job.scheduled_at,
         job.schedule_count,
@@ -112,6 +118,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -182,6 +189,7 @@ BEGIN
         job.options,
         job.task_name,
         job.parameters,
+        job.parameters_keyed,
         job.status,
         job.scheduled_at,
         job.started_at,
@@ -206,6 +214,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -229,6 +238,9 @@ BEGIN
             options,
             task_name,
             parameters,
+            parameters_encrypted,
+            parameters_keyed,
+            parameters_keyed_encrypted,
             scheduled_at,
             started_at,
             schedule_count,
@@ -244,6 +256,9 @@ BEGIN
         options,
         task_name,
         parameters,
+        parameters_encrypted,
+        parameters_keyed,
+        parameters_keyed_encrypted,
         status,
         scheduled_at,
         started_at,
@@ -262,6 +277,9 @@ BEGIN
         jobs_old.options,
         jobs_old.task_name,
         jobs_old.parameters,
+        jobs_old.parameters_encrypted,
+        jobs_old.parameters_keyed,
+        jobs_old.parameters_keyed_encrypted,
         input_status,
         jobs_old.scheduled_at,
         jobs_old.started_at,
@@ -280,6 +298,7 @@ BEGIN
         options,
         task_name,
         parameters,
+        parameters_keyed,
         status,
         scheduled_at,
         started_at,
@@ -307,6 +326,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -330,6 +350,9 @@ BEGIN
             options,
             task_name,
             parameters,
+            parameters_encrypted,
+            parameters_keyed,
+            parameters_keyed_encrypted,
             scheduled_at,
             started_at,
             schedule_count,
@@ -345,6 +368,9 @@ BEGIN
         options,
         task_name,
         parameters,
+        parameters_encrypted,
+        parameters_keyed,
+        parameters_keyed_encrypted,
         status,
         scheduled_at,
         started_at,
@@ -363,6 +389,9 @@ BEGIN
         jobs_old.options,
         jobs_old.task_name,
         jobs_old.parameters,
+        jobs_old.parameters_encrypted,
+        jobs_old.parameters_keyed,
+        jobs_old.parameters_keyed_encrypted,
         input_status,
         jobs_old.scheduled_at,
         jobs_old.started_at,
@@ -381,6 +410,7 @@ BEGIN
         options,
         task_name,
         parameters,
+        parameters_keyed,
         status,
         scheduled_at,
         started_at,
@@ -428,6 +458,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -447,7 +478,14 @@ BEGIN
         job.worker_rid,
         job.options,
         job.task_name,
-        job.parameters,
+        CASE
+            WHEN octet_length(job.parameters_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters
+        END AS parameters,
+        CASE
+            WHEN octet_length(job.parameters_keyed_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_keyed_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters_keyed
+        END AS parameters_keyed,
         job.status,
         job.scheduled_at,
         job.started_at,
@@ -474,6 +512,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -493,7 +532,14 @@ BEGIN
         job.worker_rid,
         job.options,
         job.task_name,
-        job.parameters,
+        CASE
+            WHEN octet_length(job.parameters_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters
+        END AS parameters,
+        CASE
+            WHEN octet_length(job.parameters_keyed_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_keyed_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters_keyed
+        END AS parameters_keyed,
         job.status,
         job.scheduled_at,
         job.started_at,
@@ -531,6 +577,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -550,7 +597,14 @@ BEGIN
         job.worker_rid,
         job.options,
         job.task_name,
-        job.parameters,
+        CASE
+            WHEN octet_length(job.parameters_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters
+        END AS parameters,
+        CASE
+            WHEN octet_length(job.parameters_keyed_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_keyed_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters_keyed
+        END AS parameters_keyed,
         job.status,
         job.scheduled_at,
         job.started_at,
@@ -589,6 +643,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -608,7 +663,14 @@ BEGIN
         job.worker_rid,
         job.options,
         job.task_name,
-        job.parameters,
+        CASE
+            WHEN octet_length(job.parameters_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters
+        END AS parameters,
+        CASE
+            WHEN octet_length(job.parameters_keyed_encrypted) > 0 THEN pgp_sym_decrypt(job.parameters_keyed_encrypted, input_encryption_key::text)::jsonb
+            ELSE job.parameters_keyed
+        END AS parameters_keyed,
         job.status,
         job.scheduled_at,
         job.started_at,
@@ -666,6 +728,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -685,7 +748,14 @@ BEGIN
         job_archive.worker_rid,
         job_archive.options,
         job_archive.task_name,
-        job_archive.parameters,
+        CASE
+            WHEN octet_length(job_archive.parameters_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.parameters_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.parameters
+        END AS parameters,
+        CASE
+            WHEN octet_length(job_archive.parameters_keyed_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.parameters_keyed_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.parameters_keyed
+        END AS parameters_keyed,
         job_archive.status,
         job_archive.scheduled_at,
         job_archive.started_at,
@@ -712,6 +782,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -731,7 +802,14 @@ BEGIN
         job_archive.worker_rid,
         job_archive.options,
         job_archive.task_name,
-        job_archive.parameters,
+        CASE
+            WHEN octet_length(job_archive.parameters_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.parameters_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.parameters
+        END AS parameters,
+        CASE
+            WHEN octet_length(job_archive.parameters_keyed_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.parameters_keyed_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.parameters_keyed
+        END AS parameters_keyed,
         job_archive.status,
         job_archive.scheduled_at,
         job_archive.started_at,
@@ -769,6 +847,7 @@ RETURNS TABLE (
     output_options JSONB,
     output_task_name VARCHAR(100),
     output_parameters JSONB,
+    output_parameters_keyed JSONB,
     output_status VARCHAR(50),
     output_scheduled_at TIMESTAMP,
     output_started_at TIMESTAMP,
@@ -788,7 +867,14 @@ BEGIN
         job_archive.worker_rid,
         job_archive.options,
         job_archive.task_name,
-        job_archive.parameters,
+        CASE
+            WHEN octet_length(job_archive.parameters_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.parameters_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.parameters
+        END AS parameters,
+        CASE
+            WHEN octet_length(job_archive.parameters_keyed_encrypted) > 0 THEN pgp_sym_decrypt(job_archive.parameters_keyed_encrypted, input_encryption_key::text)::jsonb
+            ELSE job_archive.parameters_keyed
+        END AS parameters_keyed,
         job_archive.status,
         job_archive.scheduled_at,
         job_archive.started_at,
