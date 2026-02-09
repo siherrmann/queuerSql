@@ -1,7 +1,9 @@
-CREATE OR REPLACE FUNCTION init_job() RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION init_job(enable_timescaledb BOOLEAN DEFAULT TRUE) RETURNS VOID AS $$
 BEGIN
     -- Create TimescaleDB extension
-    CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+    IF enable_timescaledb THEN
+        CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+    END IF;
 
     -- Create pgcrypto extension
     CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -37,7 +39,9 @@ BEGIN
     );
     
     -- Create hypertable (TimescaleDB feature)
-    PERFORM create_hypertable('job_archive', by_range('updated_at'), if_not_exists => TRUE);
+    IF enable_timescaledb THEN
+        PERFORM create_hypertable('job_archive', by_range('updated_at'), if_not_exists => TRUE);
+    END IF;
     
     -- Create triggers for notifications
     CREATE OR REPLACE TRIGGER job_notify_event
@@ -698,17 +702,64 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION add_retention_archive(input_retention_days INT)
+CREATE OR REPLACE FUNCTION add_retention_archive(input_retention_days INT, enable_timescaledb BOOLEAN DEFAULT TRUE)
 RETURNS VOID AS $$
 BEGIN
-    PERFORM add_retention_policy('job_archive', (input_retention_days * INTERVAL '1 day'));
+    IF enable_timescaledb THEN
+        -- Use TimescaleDB retention policy
+        PERFORM add_retention_policy('job_archive', (input_retention_days * INTERVAL '1 day'));
+    ELSE
+        -- Create sequence for tracking inserts
+        CREATE SEQUENCE IF NOT EXISTS job_archive_insert_counter;
+        
+        -- Create trigger function that deletes old records every 10th insert
+        EXECUTE format('
+            CREATE OR REPLACE FUNCTION cleanup_job_archive_trigger()
+            RETURNS TRIGGER AS $func$
+            DECLARE
+                insert_count BIGINT;
+                deleted_count INT;
+            BEGIN
+                -- Only run cleanup every 10th insert
+                insert_count := nextval(''job_archive_insert_counter'');
+                IF insert_count %% 10 = 0 THEN
+                    DELETE FROM job_archive
+                    WHERE updated_at < (CURRENT_TIMESTAMP - INTERVAL ''%s days'');
+                    
+                    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+                    
+                    -- Log cleanup if any rows were deleted (optional)
+                    IF deleted_count > 0 THEN
+                        RAISE NOTICE ''Cleaned up %% old job_archive records'', deleted_count;
+                    END IF;
+                END IF;
+                RETURN NEW;
+            END;
+            $func$ LANGUAGE plpgsql;
+        ', input_retention_days);
+        
+        -- Create trigger on job_archive
+        DROP TRIGGER IF EXISTS job_archive_cleanup_trigger ON job_archive;
+        CREATE TRIGGER job_archive_cleanup_trigger
+            AFTER INSERT ON job_archive
+            FOR EACH ROW
+            EXECUTE FUNCTION cleanup_job_archive_trigger();
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION remove_retention_archive()
+CREATE OR REPLACE FUNCTION remove_retention_archive(enable_timescaledb BOOLEAN DEFAULT TRUE)
 RETURNS VOID AS $$
 BEGIN
-    PERFORM remove_retention_policy('job_archive');
+    IF enable_timescaledb THEN
+        -- Remove TimescaleDB retention policy
+        PERFORM remove_retention_policy('job_archive');
+    ELSE
+        -- Drop trigger and related objects
+        DROP TRIGGER IF EXISTS job_archive_cleanup_trigger ON job_archive;
+        DROP FUNCTION IF EXISTS cleanup_job_archive_trigger();
+        DROP SEQUENCE IF EXISTS job_archive_insert_counter;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
