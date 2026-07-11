@@ -57,6 +57,10 @@ BEGIN
         ON job
         USING HASH ((options->'schedule'->>'next_interval'));
     
+    CREATE INDEX IF NOT EXISTS idx_job_parent_rid
+        ON job
+        USING BTREE ((options->>'parent_rid'));
+    
     CREATE INDEX IF NOT EXISTS idx_job_worker_id ON job (worker_id);
     CREATE INDEX IF NOT EXISTS idx_job_worker_rid ON job (worker_rid);
     CREATE INDEX IF NOT EXISTS idx_job_status ON job (status);
